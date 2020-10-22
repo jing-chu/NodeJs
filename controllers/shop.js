@@ -4,10 +4,13 @@
  */
 
 const Product = require('../models/product')
+const Order = require('../models/Order')
+const user = require('../models/user')
 
 exports.getProducts = (req, res, next) => {
-  Product.fetchAll()
+  Product.find()   //find() is from mongoose, find all products
     .then((products) => {
+      console.log(products)
       res.render('shop/product-list',{   //views 
         prods: products, 
         pageTitle: 'All Products', 
@@ -19,7 +22,7 @@ exports.getProducts = (req, res, next) => {
 
 exports.getProduct = (req, res, next) => {
   const prodId = req.params.productID
-  Product.findById(prodId)
+  Product.findById(prodId)   //findById() is from Mongoose
     .then(product => {
       res.render('shop/product-detail', {
         product: product,
@@ -31,7 +34,7 @@ exports.getProduct = (req, res, next) => {
 }
 
 exports.getIndex = (req, res, next) => {
-  Product.fetchAll()
+  Product.find()
     .then((products) => {
       res.render('shop/index',{
         prods: products, 
@@ -44,8 +47,11 @@ exports.getIndex = (req, res, next) => {
 
 exports.getCart = (req, res, next) => {
   req.user
-    .getCart()
-    .then(products => {
+    .populate('cart.items.productId')  //populate() doesn't return a promise, so
+    .execPopulate()      // to chain a execPopulate() to get a promise
+    .then(user => {
+      console.log(user.cart.items)
+      const products = user.cart.items
       res.render('shop/cart', {
         pageTitle: 'Your Cart',
         path: '/cart',
@@ -62,7 +68,7 @@ exports.postCart = (req, res, next) => {
       return req.user.addToCart(product)
     })
     .then(result => {
-      console.log("postCartiiiiiiiii")
+      console.log(result)
       res.redirect('/cart')
     })
     .catch(err => {console.log(err)})
@@ -72,7 +78,7 @@ exports.postCart = (req, res, next) => {
 exports.postDeleteCartProduct = (req, res, next) => {
   const prodId = req.body.productId
   req.user
-  .deleteItemFromCart(prodId)
+  .removeFromCart(prodId)
   .then(result => {
     res.redirect('/cart')
   })
@@ -81,15 +87,34 @@ exports.postDeleteCartProduct = (req, res, next) => {
 
 exports.postOrder = (req, res, next) => {
   req.user
-    .addOrder()
+    .populate('cart.items.productId')
+    .execPopulate()
+    .then(user => {
+      console.log(user.cart.items)
+      const products = user.cart.items.map(i => {
+        return {quantity: i.quantity, product: {...i.productId._doc}} //pull out all the data in the document we retrieved
+      })
+      const order = new Order({
+        user: {
+          name: req.user.name,
+          userId: req.user
+        },
+        products: products
+      })
+      return order.save()
+    })
     .then(result => {
+      return req.user.clearCart()
+      
+    })
+    .then(() => {
       res.redirect('/orders')
     })
     .catch(err => console.log(err))
-}
+  }
 
 exports.getOrders = (req, res, next) => {
-  req.user.getOrder()
+  Order.find({'user.userId': req.user._id})
     .then(orders => {
       res.render('shop/orders', {
         pageTitle: 'Your Orders',

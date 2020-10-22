@@ -3,9 +3,9 @@ const http = require('http')   //import http: a core module
 
 const express = require('express')  //import express: a third part module 
 const bodyParser = require('body-parser') //import body-parser: a third part module
+const mongoose = require('mongoose')
 
 const errorController = require('./controllers/error')
-const mongoConnect = require('./util/database').mongoConnect
 const User = require('./models/user')
 
 const app = express()
@@ -32,9 +32,9 @@ app.use((req, res, next) => {
 app.use(bodyParser.urlencoded({extended:false}))
 app.use(express.static(path.join(__dirname, 'public')))
 app.use((req,res,next) => {
-  User.findById('5f894c8c919d310af8024198')
+  User.findById('5f8ff0302545ae128769c1da')
   .then(user => {
-    req.user = new User(user.name, user.email, user.cart, user._id)
+    req.user = user
     next()
  })
   .catch(err => console.log(err))
@@ -47,6 +47,23 @@ app.use(shopRouter.router)
 //handle 404 error
 app.use(errorController.getErrorPage)
 
-mongoConnect(() => {
-  app.listen(3000)
-})
+mongoose
+  .connect('mongodb+srv://jing_nodejs:jing_nodejs@cluster0.yfoug.mongodb.net/shop?retryWrites=true&w=majority')
+  .then(result => {
+    User.findOne().then( user => {
+      if (!user) {
+        const user = new User({
+          name: 'Max',
+          email: 'max@teset.com',
+          cart: {
+            items: []
+          }
+        })
+        user.save()
+      }
+    })
+    app.listen(3000)
+  })
+  .catch(err => {
+    console.log(err)
+  })
