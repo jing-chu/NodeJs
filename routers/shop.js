@@ -24,4 +24,4 @@ router.post('/create-order', shopController.postOrder)
 router.get('/orders',shopController.getOrders)
 
 
-exports.router = router
+module.exports = router
