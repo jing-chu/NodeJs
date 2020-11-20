@@ -6,7 +6,7 @@ const fs = require('fs')
 const path = require('path')
 
 const Product = require('../models/product')
-const Order = require('../models/Order')
+const Order = require('../models/order')
 const user = require('../models/user')
 
 exports.getProducts = (req, res, next) => {
